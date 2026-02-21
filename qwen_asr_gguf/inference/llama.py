@@ -2,8 +2,11 @@ import sys
 import os
 import ctypes
 import codecs
+import struct
+import time
 import numpy as np
 import gguf
+from gguf.constants import GGML_QUANT_SIZES, GGMLQuantizationType
 from typing import List, Union
 from pathlib import Path
 from os.path import relpath
@@ -774,10 +777,172 @@ def configure_logging(quiet=False):
         _log_callback_ref = LOG_CALLBACK(lambda l, m, u: None)
         llama_log_set(_log_callback_ref, None)
 
+
+
+# =========================================================================
+# Embedding Table
+# =========================================================================
+
+
+
+class LlamaEmbeddingTable:
+    """动态反量化 Embedding 表，支持 table[ids] 语法"""
+    def __init__(self, raw_data, qtype):
+        self.raw_data = raw_data
+        self.qtype = qtype
+        
+    def __len__(self):
+        return self.raw_data.shape[0]
+
+    def __getitem__(self, tokens):
+        from gguf.quants import dequantize
+        
+        # 如果是原生 float 类型，直接返回
+        if self.raw_data.dtype in (np.float32, np.float16):
+            return self.raw_data[tokens].astype(np.float32)
+            
+        # 调用官方库进行高性能反量化
+        return dequantize(self.raw_data[tokens], self.qtype.value)
+
+
+
+
+def _skip_gguf_value(mm, offs, v_type):
+    # UINT8=0, INT8=1, UINT16=2, INT16=3, UINT32=4, INT32=5, FLOAT32=6, BOOL=7, STRING=8, ARRAY=9, UINT64=10, INT64=11, FLOAT64=12
+    fixed = [1, 1, 2, 2, 4, 4, 4, 1, -1, -2, 8, 8, 8]
+    val_len = fixed[v_type]
+    if val_len > 0:
+        return offs + val_len
+    elif val_len == -1: # string
+        slen = struct.unpack_from("<Q", mm, offs)[0]
+        return offs + 8 + slen
+    elif val_len == -2: # array
+        itype, alen = struct.unpack_from("<IQ", mm, offs)
+        offs += 12
+        if itype == 8: # string array
+            for _ in range(alen):
+                slen = struct.unpack_from("<Q", mm, offs)[0]
+                offs += 8 + slen
+        else:
+            item_len = fixed[itype]
+            if item_len > 0:
+                offs += item_len * alen
+            else:
+                raise ValueError("Nested arrays or unknown type not supported in fast skip")
+        return offs
+
+def get_token_embeddings_gguf(model_path, target_tensor="token_embd.weight"):
+    """
+    超极速 GGUF Embedding 提取 (直接二进制寻址)
+    避免加载整个模型、避免解析包含 15 万词条的 tokenizer 对象。耗时降至 < 50ms。
+    """
+    t_start = time.time()
+    mm = np.memmap(model_path, mode='r')
+    
+    # 获取文件头信息
+    tensor_count, kv_count = struct.unpack_from("<QQ", mm, 8)
+    offs = 24
+    alignment = 32
+    
+    # 光速跃过/扫描所有 KV 字段
+    for _ in range(kv_count):
+        key_len = struct.unpack_from("<Q", mm, offs)[0]
+        offs += 8
+        if key_len == 17 and mm[offs:offs+17].tobytes() == b'general.alignment':
+            offs += 17
+            v_type = struct.unpack_from("<I", mm, offs)[0]
+            offs += 4
+            if v_type == 4: # UINT32
+                alignment = struct.unpack_from("<I", mm, offs)[0]
+                offs += 4
+                continue
+        else:
+            offs += key_len
+            
+        v_type = struct.unpack_from("<I", mm, offs)[0]
+        offs += 4
+        offs = _skip_gguf_value(mm, offs, v_type)
+        
+    # 扫描 Tensor Infos 搜寻我们想要的张量
+    target_rel_offset = None
+    target_type = None
+    target_shape = None # GGUF shape 是倒序的 [n_embd, vocab_size]
+    
+    target_bytes = target_tensor.encode('utf-8')
+    for _ in range(tensor_count):
+        name_len = struct.unpack_from("<Q", mm, offs)[0]
+        offs += 8
+        is_target = False
+        if name_len == len(target_bytes) and mm[offs:offs+name_len].tobytes() == target_bytes:
+            is_target = True
+        offs += name_len
+        
+        n_dims = struct.unpack_from("<I", mm, offs)[0]
+        offs += 4
+        
+        shape = struct.unpack_from(f"<{n_dims}Q", mm, offs) # 返回元组
+        offs += 8 * n_dims
+        
+        t_type = struct.unpack_from("<I", mm, offs)[0]
+        offs += 4
+        
+        rel_offset = struct.unpack_from("<Q", mm, offs)[0]
+        offs += 8
+        
+        if is_target:
+            target_shape = shape
+            target_type = t_type
+            target_rel_offset = rel_offset
+            
+    # 计算数据区起始点并加载张量
+    padding = offs % alignment
+    if padding != 0:
+        offs += (alignment - padding)
+    data_offset = offs
+    
+    if target_shape is None:
+        logger.error(f"无法在 {model_path} 中找到 {target_tensor}")
+        return None
+        
+    abs_offset = data_offset + target_rel_offset
+    n_embd = target_shape[0]     # 特征维度
+    vocab_size = target_shape[1] # 词表大小
+    
+    qtype = GGMLQuantizationType(target_type)
+    if qtype in GGML_QUANT_SIZES:
+        block_size, type_size = GGML_QUANT_SIZES[qtype]
+        bytes_per_row = (n_embd // block_size) * type_size
+    else:
+        # F32 或 F16
+        if qtype == GGMLQuantizationType.F32:
+            bytes_per_row = n_embd * 4
+        elif qtype == GGMLQuantizationType.F16:
+            bytes_per_row = n_embd * 2
+        else:
+            raise ValueError(f"未知的数据格式支持: {qtype.name}")
+
+    total_bytes = vocab_size * bytes_per_row
+    raw_data = mm[abs_offset : abs_offset + total_bytes]
+    
+    if qtype in (GGMLQuantizationType.F32, GGMLQuantizationType.F16):
+        if qtype == GGMLQuantizationType.F32:
+            raw_data = raw_data.view(np.float32).reshape(vocab_size, n_embd)
+        else:
+            raw_data = raw_data.view(np.float16).reshape(vocab_size, n_embd)
+    else:
+        raw_data = raw_data.reshape(vocab_size, bytes_per_row)
+        
+    total_time = time.time() - t_start
+    logger.info(f"--- [QwenASR] 已极速载入 Embedding 视图 ({total_time*1000:.1f}ms) ---")
+    logger.info(f"    - 量化格式: {qtype.name} ({n_embd} dims, {vocab_size} tokens)")
+    
+    return LlamaEmbeddingTable(raw_data, qtype)
+
+
+
 # =========================================================================
 # Utilities
 # =========================================================================
-
 
 
 def text_to_tokens(vocab, text, add_special=False, parse_special=True):
@@ -791,50 +956,3 @@ def token_to_bytes(vocab, token_id):
     buf = ctypes.create_string_buffer(256)
     n = llama_token_to_piece(vocab, token_id, buf, ctypes.sizeof(buf), 0, True)
     return buf.raw[:n] if n > 0 else b""
-
-def get_token_embeddings_gguf(model_path):
-    model_name = os.path.splitext(os.path.basename(model_path))[0]
-    cache_path = os.path.join(os.path.dirname(model_path), f"{model_name}.embd.npy")
-    
-    if os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(model_path):
-        return np.load(cache_path)
-    
-    reader = gguf.GGUFReader(model_path, mode='r')
-    
-    # 查找 Embedding 张量
-    target_tensor = None
-    for t in reader.tensors:
-        if t.name == "token_embd.weight":
-            target_tensor = t
-            break
-            
-    if target_tensor is None:
-        return None
-        
-    # 从元数据确定维度 (由于 Key 含有架构前缀，我们遍历查找)
-    n_embd = target_tensor.shape[0] # 稳健做法：优先使用张量形状
-    for key, field in reader.fields.items():
-        if "embedding_length" in key:
-            n_embd = int(field.parts[-1][0])
-            break
-    
-    # 获取数据
-    if target_tensor.tensor_type == 8: # Q8_0
-        data_u8 = np.frombuffer(target_tensor.data, dtype=np.uint8)
-        n_blocks = data_u8.size // 34
-        blocks = data_u8.reshape(n_blocks, 34)
-        deltas = blocks[:, :2].view(np.float16).flatten()
-        quants = blocks[:, 2:].view(np.int8)
-        data = (deltas[:, np.newaxis] * quants).flatten().astype(np.float32).reshape(-1, n_embd)
-    else:
-        # F16 或其他原生类型
-        data = target_tensor.data
-        if isinstance(data, np.memmap) or isinstance(data, np.ndarray):
-            if data.dtype == np.float16:
-                data = data.astype(np.float32)
-        else:
-            # 兜底：如果是原始 buffer
-            data = np.frombuffer(target_tensor.data, dtype=np.float16).astype(np.float32).reshape(-1, n_embd)
-            
-    np.save(cache_path, data)
-    return data
