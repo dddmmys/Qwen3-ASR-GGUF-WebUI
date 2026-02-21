@@ -36,12 +36,8 @@ class QwenASREngine:
         # 路径解析
         llm_gguf = os.path.join(config.model_dir, config.llm_fn)
 
-        # 1. 加载识别 LLM
-        self.model = llama.LlamaModel(llm_gguf)
-        self.embedding_table = llama.get_token_embeddings_gguf(llm_gguf)
-        self.ctx = llama.LlamaContext(self.model, n_ctx=config.n_ctx, n_batch=4096, embeddings=False)
         
-        # 2. 启动辅助子进程 (编码 + 对齐)
+        # 1. 启动辅助子进程 (编码 + 对齐)
         self.to_worker_q = mp.Queue()
         self.from_enc_q = mp.Queue()
         self.from_align_q = mp.Queue()
@@ -52,6 +48,11 @@ class QwenASREngine:
             daemon=True
         )
         self.helper_proc.start()
+        
+        # 2. 加载识别 LLM
+        self.model = llama.LlamaModel(llm_gguf)
+        self.embedding_table = llama.get_token_embeddings_gguf(llm_gguf)
+        self.ctx = llama.LlamaContext(self.model, n_ctx=config.n_ctx, n_batch=4096, embeddings=False)
         
         # 3. 等待子进程就绪信号 (包含 Encoder 预热完成)
         msg = self.from_enc_q.get()

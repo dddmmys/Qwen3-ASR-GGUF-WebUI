@@ -5,8 +5,14 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-# 添加项目路径
-sys.path.append(str(Path(__file__).parent.absolute()))
+# 获取项目根目录 (适配打包环境)
+if getattr(sys, 'frozen', False):
+    # 打包环境：sys.executable 位于 dist/Project/ 根目录
+    PROJ_DIR = Path(sys.executable).parent
+else:
+    # 源码环境
+    PROJ_DIR = Path(__file__).parent
+
 
 import typer
 from rich.console import Console
@@ -33,7 +39,7 @@ def transcribe(
     files: List[Path] = typer.Argument(..., help="要转录的音频文件列表"),
     
     # 组 1: 模型与硬件
-    model_dir: str = typer.Option("model", "--model-dir", "-m", help="模型权重根目录", rich_help_panel="模型配置"),
+    model_dir: str = typer.Option(str(PROJ_DIR / "model"), "--model-dir", "-m", help="模型权重根目录", rich_help_panel="模型配置"),
     precision: str = typer.Option("fp16", "--prec", help="编码器精度: fp16, int8, fp32", rich_help_panel="模型配置"),
     timestamp: bool = typer.Option(True, "--timestamp/--no-ts", help="是否开启时间戳引擎", rich_help_panel="模型配置"),
     use_dml: bool = typer.Option(True, "--dml/--no-dml", help="是否使用 DirectML 加速", rich_help_panel="模型配置"),
@@ -106,7 +112,10 @@ def transcribe(
     # 4. 初始化引擎
     with console.status("[bold yellow]正在初始化引擎，请稍候...[/bold yellow]") as status:
         try:
+            t0 = time.time()
             engine = QwenASREngine(config=config)
+            init_duration = time.time() - t0
+            console.print(f"--- [QwenASR] 引擎初始化耗时: {init_duration:.2f} 秒 ---")
         except Exception as e:
             console.print(f"[bold red]引擎初始化失败: {e}[/bold red]")
             raise typer.Exit(code=1)

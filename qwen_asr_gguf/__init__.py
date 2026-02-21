@@ -10,7 +10,17 @@ import logging
 import sys
 import os
 
-def setup_logging(level: int = logging.WARNING, log_file: str = os.path.join("logs", "latest.log")):
+# 获取项目根目录 (适配打包环境)
+if getattr(sys, 'frozen', False):
+    # 打包环境：sys.executable 位于 dist/Project/ 根目录
+    ROOT_DIR = os.path.dirname(sys.executable)
+else:
+    # 源码环境：__file__ 位于 root/qwen_asr_gguf/__init__.py
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+default_log_file = os.path.join(ROOT_DIR, "logs", "latest.log")
+
+def setup_logging(level: int = logging.WARNING, log_file: str = default_log_file):
     """
     配置全局日志
 
@@ -44,6 +54,6 @@ def setup_logging(level: int = logging.WARNING, log_file: str = os.path.join("lo
     return root_logger
 
 
-# 初始化默认日志配置（默认 WARNING 级别，记录到 logs/latest.log）
+# 初始化默认日志配置（默认 INFO 级别）
 logger = setup_logging(level=logging.INFO)
 

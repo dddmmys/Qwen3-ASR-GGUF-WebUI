@@ -2,6 +2,7 @@
 import os
 import sys
 import re
+import time
 from pathlib import Path
 
 # 添加项目路径
@@ -27,7 +28,9 @@ def main():
     )
 
     # 初始化引擎
+    t0 = time.time()
     engine = QwenASREngine(config=config)
+    print(f"--- [QwenASR] 引擎初始化耗时: {time.time() - t0:.2f} 秒 ---")
     
     # 执行转录
     res = engine.transcribe(
