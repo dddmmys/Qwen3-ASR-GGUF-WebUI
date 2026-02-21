@@ -70,7 +70,8 @@ class AlignerProcessor:
             if w_clean: tokens.append(w_clean)
         return tokens
 
-    def tokenize_chinese_mixed(self, text: str) -> List[str]:
+    def tokenize_general(self, text: str) -> List[str]:
+        """通用的分词逻辑：按空格切分，且对 CJK 字符进行逐字拆分（适用于中、英、中英混排及大多数语种）"""
         tokens = []
         for seg in text.split():
             cleaned = self.clean_token(seg)
@@ -84,11 +85,16 @@ class AlignerProcessor:
             if buf: tokens.append("".join(buf))
         return tokens
 
-    def tokenize(self, text: str, language: str = "Chinese") -> List[str]:
-        lang = language.lower()
-        if lang == "japanese": return self.tokenize_japanese(text)
-        elif lang == "korean": return self.tokenize_korean(text)
-        else: return self.tokenize_chinese_mixed(text)
+    def tokenize(self, text: str, language: Optional[str] = None) -> List[str]:
+        # 统一转为小写字符串。如果为 None 则视为空字符串，从而安全进入 else 分支。
+        lang = str(language or "").lower()
+        if lang == "japanese": 
+            return self.tokenize_japanese(text)
+        elif lang == "korean": 
+            return self.tokenize_korean(text)
+        else: 
+            # 所有的其他语种均使用通用分词逻辑
+            return self.tokenize_general(text)
 
     def fix_timestamps(self, data: np.ndarray) -> List[int]:
         data_list = data.tolist()
