@@ -3,28 +3,48 @@ import os
 import time
 import numpy as np
 import onnxruntime as ort
-import librosa
+import scipy.signal
 
 class FastWhisperMel:
-    """基于 NumPy 和 Librosa 的 Mel 提取器"""
+    """基于 NumPy 和 SciPy 的纯净版 Mel 提取器 (彻底干掉 librosa 的 numba JIT 启动延时)"""
     def __init__(self, filter_path: str):
         self.filters = np.load(filter_path) # (201, 128)
+        self.n_fft = 400
+        self.hop_length = 160
+        # 提前计算并缓存好汉明窗
+        self.window = scipy.signal.get_window('hann', self.n_fft, fftbins=True)
         
     def __call__(self, audio: np.ndarray, dtype=np.float32) -> np.ndarray:
-        # 1. STFT
-        stft = librosa.stft(audio, n_fft=400, hop_length=160, window='hann', center=True)
-        # 2. 能量谱
-        magnitudes = np.abs(stft) ** 2
-        # 3. Mel 映射
+        # 1. Padding (与 librosa 的 center=True 行为保持一致)
+        pad_len = int(self.n_fft // 2)
+        y = np.pad(audio, pad_len, mode='reflect')
+        
+        # 2. 高效分帧 (利用 numpy 内存视图，耗时几乎为0)
+        num_frames = 1 + (len(y) - self.n_fft) // self.hop_length
+        shape = (self.n_fft, num_frames)
+        strides = (y.itemsize, self.hop_length * y.itemsize)
+        frames = np.lib.stride_tricks.as_strided(y, shape=shape, strides=strides)
+        
+        # 3. 加窗并执行实数 FFT
+        stft_res = np.fft.rfft(frames * self.window[:, np.newaxis], axis=0)
+        
+        # 4. 能量谱
+        magnitudes = np.abs(stft_res) ** 2
+        
+        # 5. Mel 映射
         mel_spec = np.dot(self.filters.T, magnitudes)
-        # 4. 取对数
+        
+        # 6. 取对数
         log_spec = np.log10(np.maximum(mel_spec, 1e-10))
-        # 5. 归一化
+        
+        # 7. 归一化
         log_spec = np.maximum(log_spec, log_spec.max() - 8.0)
         log_spec = (log_spec + 4.0) / 4.0
-        # 6. 帧对齐：丢弃 stft(center=True) 产生的多余帧
-        n_frames = audio.shape[-1] // 160
-        log_spec = log_spec[:, :n_frames]
+        
+        # 8. 帧对齐：丢弃多余帧
+        n_frames_out = audio.shape[-1] // self.hop_length
+        log_spec = log_spec[:, :n_frames_out]
+        
         return log_spec.astype(dtype)
 
 def get_feat_extract_output_lengths(input_lengths):
