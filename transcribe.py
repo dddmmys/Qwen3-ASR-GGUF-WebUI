@@ -40,7 +40,7 @@ def transcribe(
     
     # 组 1: 模型与硬件
     model_dir: str = typer.Option(str(PROJ_DIR / "model"), "--model-dir", "-m", help="模型权重根目录", rich_help_panel="模型配置"),
-    precision: str = typer.Option("fp16", "--prec", help="编码器精度: fp16, int8, fp32", rich_help_panel="模型配置"),
+    precision: str = typer.Option("int4", "--prec", help="编码器精度: fp32, fp16, int8, int4", rich_help_panel="模型配置"),
     timestamp: bool = typer.Option(True, "--timestamp/--no-ts", help="是否开启时间戳引擎", rich_help_panel="模型配置"),
     use_dml: bool = typer.Option(True, "--dml/--no-dml", help="是否使用 DirectML 加速", rich_help_panel="模型配置"),
     use_vulkan: bool = typer.Option(True, "--vulkan/--no-vulkan", help="是否开启 Vulkan 加速 (设置 GGML_VULKAN=1)", rich_help_panel="模型配置"),

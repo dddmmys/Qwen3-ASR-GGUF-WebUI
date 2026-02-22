@@ -45,7 +45,7 @@ def export_backend():
             "attention_mask": {0: "batch", 2: "time_q", 3: "time_k"},
             "last_hidden_state": {0: "batch", 1: "time"},
         },
-        opset_version=18,
+        opset_version=19,
         do_constant_folding=True, 
         dynamo=True
     )

@@ -42,7 +42,7 @@ def export_frontend():
         input_names=["chunk_mel"],
         output_names=["chunk_out"],
         # 纯静态模型
-        opset_version=18,
+        opset_version=19,
         do_constant_folding=False, 
         dynamo=True
     )
