@@ -68,11 +68,8 @@ def transcribe(
     """
     
     # 1. 环境准备
-    if use_vulkan:
-        os.environ["GGML_VULKAN"] = "1"
-    else:
-        # 如果用户显式关闭，确保环境变量不干扰
-        os.environ.pop("GGML_VULKAN", None)
+    if not use_vulkan:
+        os.environ["VK_ICD_FILENAMES"] = "none"       # 禁止 Vulkan
 
     # 2. 构造配置
     asr_files = get_model_filenames(precision, is_aligner=False)
