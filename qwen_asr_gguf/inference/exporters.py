@@ -111,6 +111,8 @@ def export_to_txt(path: str, result: TranscribeResult):
     final_text = itn(result.text)
     # 2. 按照标点符号换行，保留标点
     formatted_text = re.sub(r'([，。？！])', r'\1\n', final_text)
+    # 3. 对于英文字母后面的逗号空格、句号空格，也要换行
+    formatted_text = re.sub(r'(?<=[a-zA-Z])([,\.] )', r'\1\n', formatted_text)
     
     with open(path, "w", encoding="utf-8") as f:
         f.write(formatted_text)

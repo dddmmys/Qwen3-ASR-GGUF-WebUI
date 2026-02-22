@@ -150,7 +150,7 @@ class QwenASREngine:
                 stable_tokens.append(ready_token)
                 piece = text_decoder.decode(self.model.token_to_bytes(ready_token))
                 if piece:
-                    print(re.sub('([，。？！])', '\\1\n', piece), end='', flush=True)
+                    print(re.sub('([，。？！,\.])', '\\1\n', piece), end='', flush=True)
                     stable_text_acc += piece
             
             # 熔断检查：检测重复循环
@@ -173,7 +173,7 @@ class QwenASREngine:
                 stable_tokens.append(t)
                 piece = text_decoder.decode(self.model.token_to_bytes(t))
                 if piece:
-                    print(re.sub('([，。？！])', '\\1\n', piece), end="", flush=True)
+                    print(re.sub('([，。？！,\.])', '\\1\n', piece), end="", flush=True)
                     stable_text_acc += piece
             final_p = text_decoder.decode(b"", final=True)
             if final_p: 
