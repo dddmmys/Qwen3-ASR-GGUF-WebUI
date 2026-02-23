@@ -98,6 +98,22 @@ CPU 的速度：
 ✅ 已导出时间戳: test.json
 ```
 
+## 显存占用
+
+以 1.7B ASR 和 0.6B Aligner 载入为例，Encoder int4 量化，Decoder q4_k 量化。
+
+开启 DML 时：
+
+- ASR Encoder     占用显存 473MB
+- Aligner Encoder 占用显存 420MB
+
+开启 Vulkan 时：
+
+- ASR Decoder     模型占用显存 1064MB，上下文占用显存 228 MB，推理占用 304MB，总共 1.6GB
+- Aligner Decoder 模型占用显存  372MB，上下文占用显存 228 MB，推理占用 299MB，总共 0.9GB
+
+所以开启 DML 需备足 900M 显存，开启 Vulkan 需备足 2.5G 显存。
+
 
 ## 快速开始
 
