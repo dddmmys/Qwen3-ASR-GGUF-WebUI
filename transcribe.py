@@ -44,7 +44,7 @@ def transcribe(
     timestamp: bool = typer.Option(True, "--timestamp/--no-ts", help="是否开启时间戳引擎", rich_help_panel="模型配置"),
     use_dml: bool = typer.Option(True, "--dml/--no-dml", help="是否使用 DirectML 加速", rich_help_panel="模型配置"),
     use_vulkan: bool = typer.Option(True, "--vulkan/--no-vulkan", help="是否开启 Vulkan 加速 (设置 GGML_VULKAN=1)", rich_help_panel="模型配置"),
-    n_ctx: int = typer.Option(4096, "--n-ctx", help="LLM 上下文窗口大小", rich_help_panel="模型配置"),
+    n_ctx: int = typer.Option(2048, "--n-ctx", help="LLM 上下文窗口大小", rich_help_panel="模型配置"),
     
     # 组 2: 转录逻辑
     language: Optional[str] = typer.Option(None, "--language", "-l", help="强制指定语种 (例: Chinese, English)", rich_help_panel="转录设置"),
