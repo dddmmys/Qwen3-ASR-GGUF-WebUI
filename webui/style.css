@@ -1,0 +1,572 @@
+/* ============================================================
+   本地音频转字幕图形化工具 - 样式表
+   ============================================================
+   包含所有视觉样式定义，支持日间/夜间主题切换。
+   版本: 1.0
+   ============================================================ */
+
+/* ==================== 日间模式（默认）变量定义 ==================== */
+/* 所有颜色和样式均通过CSS变量控制，便于主题切换 */
+:root {
+    /* 全局背景和文字颜色 */
+    --bg-color: #f9f9f9;
+    --text-color: #333;
+
+    /* 边框颜色 */
+    --border-color: #ccc;
+
+    /* 主要按钮颜色（蓝色系） */
+    --primary-color: #0078d4;
+    --primary-hover: #005a9e;
+
+    /* 次要按钮颜色（灰色系） */
+    --secondary-color: #6c757d;
+    --secondary-hover: #5a6268;
+
+    /* 卡片背景 */
+    --card-bg: white;
+
+    /* 上传区域 */
+    --upload-area-bg: #fafafa;
+    --upload-area-border: #ccc;
+    --upload-area-hover-border: #0078d4;
+
+    /* 辅助文本颜色 */
+    --hint-color: #888;
+    --file-info-color: #666;
+
+    /* 进度条 */
+    --progress-bg: #e1f5fe;
+    --progress-border: #03a9f4;
+
+    /* 结果区域 */
+    --result-bg: #f1f1f1;
+    --result-border: #ddd;
+
+    /* SRT预览区域（暗色背景） */
+    --srt-bg: #2d2d2d;
+    --srt-text: #f8f8f2;
+
+    /* 日志区域（更暗的背景） */
+    --log-bg: #1e1e1e;
+    --log-text: #d4d4d4;
+
+    /* 高级设置面板 */
+    --settings-panel-bg: white;
+    --settings-panel-border: #ccc;
+    --settings-panel-shadow: rgba(0, 0, 0, 0.2);
+
+    /* 批量文件列表 */
+    --batch-file-list-bg: #f0f0f0;
+
+    /* 表格样式 */
+    --table-header-bg: #d9e6f2;
+    --table-border: #ccc;
+
+    /* 临时文件管理区域 */
+    --temp-control-bg: #e8f0fe;
+    --temp-control-input-border: #ccc;
+
+    /* 模态框 */
+    --modal-overlay: rgba(0, 0, 0, 0.5);
+    --modal-content-bg: white;
+    --modal-text-bg: #f5f5f5;
+
+    /* 页脚 */
+    --footer-text: #777;
+    --footer-link: #0078d4;
+}
+
+/* ==================== 夜间模式变量覆盖 ==================== */
+/* 当 body 拥有 dark-theme 类时，覆盖上述变量值 */
+body.dark-theme {
+    --bg-color: #1e1e1e;
+    --text-color: #e0e0e0;
+    --border-color: #444;
+    --primary-color: #0d6efd;
+    --primary-hover: #0b5ed7;
+    --secondary-color: #6c757d;
+    --secondary-hover: #5a6268;
+    --card-bg: #2d2d2d;
+    --upload-area-bg: #3a3a3a;
+    --upload-area-border: #555;
+    --upload-area-hover-border: #0d6efd;
+    --hint-color: #aaa;
+    --file-info-color: #ccc;
+    --progress-bg: #0a3b4e;
+    --progress-border: #0dcaf0;
+    --result-bg: #3a3a3a;
+    --result-border: #555;
+    --srt-bg: #1e1e1e;
+    --srt-text: #d4d4d4;
+    --log-bg: #0a0a0a;
+    --log-text: #b0b0b0;
+    --settings-panel-bg: #2d2d2d;
+    --settings-panel-border: #444;
+    --settings-panel-shadow: rgba(0, 0, 0, 0.5);
+    --batch-file-list-bg: #3a3a3a;
+    --table-header-bg: #0a3b4e;
+    --table-border: #444;
+    --temp-control-bg: #2b3b4e;
+    --temp-control-input-border: #666;
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+    --modal-content-bg: #2d2d2d;
+    --modal-text-bg: #3a3a3a;
+    --footer-text: #aaa;
+    --footer-link: #0d6efd;
+}
+
+/* ==================== 全局基础样式 ==================== */
+body {
+    /* 字体族 */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    /* 页面最大宽度，居中显示 */
+    max-width: 900px;
+    margin: 40px auto;
+
+    /* 内边距 */
+    padding: 0 20px;
+
+    /* 背景和文字颜色使用变量 */
+    background: var(--bg-color);
+    color: var(--text-color);
+
+    /* 切换主题时的过渡动画 */
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* ==================== 标题样式 ==================== */
+h1 {
+    /* 字体大小 */
+    font-size: 1.8em;
+
+    /* 底部边框使用主色 */
+    border-bottom: 2px solid var(--primary-color);
+
+    /* 内边距 */
+    padding-bottom: 10px;
+}
+
+/* ==================== 卡片容器 ==================== */
+.card {
+    /* 背景使用卡片背景色 */
+    background: var(--card-bg);
+
+    /* 圆角 */
+    border-radius: 8px;
+
+    /* 阴影效果 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    /* 内边距 */
+    padding: 25px;
+
+    /* 外边距（上下20px） */
+    margin: 20px 0;
+
+    /* 背景色过渡 */
+    transition: background-color 0.3s;
+}
+
+/* ==================== 按钮样式 ==================== */
+
+/* 主要按钮（蓝色） */
+.btn-primary {
+    /* 背景使用主色 */
+    background: var(--primary-color);
+
+    /* 文字颜色白色 */
+    color: white;
+
+    /* 无边框 */
+    border: none;
+
+    /* 内边距 */
+    padding: 10px 25px;
+
+    /* 圆角 */
+    border-radius: 5px;
+
+    /* 字体大小 */
+    font-size: 16px;
+
+    /* 鼠标指针 */
+    cursor: pointer;
+
+    /* 背景色过渡效果 */
+    transition: background 0.2s;
+}
+
+/* 主要按钮悬停效果 */
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+/* 主要按钮禁用状态 */
+.btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* 次要按钮（灰色） */
+.btn-secondary {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--secondary-hover);
+}
+
+/* ==================== 上传区域 ==================== */
+.upload-area {
+    /* 虚线边框 */
+    border: 2px dashed var(--upload-area-border);
+
+    /* 圆角 */
+    border-radius: 8px;
+
+    /* 内边距 */
+    padding: 30px;
+
+    /* 文本居中 */
+    text-align: center;
+
+    /* 背景色 */
+    background: var(--upload-area-bg);
+
+    /* 鼠标指针为手形 */
+    cursor: pointer;
+
+    /* 边框颜色过渡 */
+    transition: border 0.3s;
+}
+
+/* 上传区域悬停时边框变色 */
+.upload-area:hover {
+    border-color: var(--upload-area-hover-border);
+}
+
+/* 隐藏原生的文件输入框 */
+.upload-area input {
+    display: none;
+}
+
+/* 提示文字 */
+.hint {
+    font-size: 0.9em;
+    color: var(--hint-color);
+}
+
+/* 已选择文件信息 */
+.file-info {
+    margin: 15px 0;
+    color: var(--file-info-color);
+}
+
+/* ==================== 进度条区域 ==================== */
+.progress {
+    /* 默认隐藏 */
+    display: none;
+
+    margin: 20px 0;
+    padding: 15px;
+
+    /* 背景色 */
+    background: var(--progress-bg);
+
+    /* 圆角 */
+    border-radius: 5px;
+
+    /* 左侧强调边框 */
+    border-left: 4px solid var(--progress-border);
+}
+
+/* ==================== 结果区域 ==================== */
+.result-box {
+    margin: 25px 0 10px;
+    background: var(--result-bg);
+    border-radius: 5px;
+    padding: 15px;
+
+    /* 保留空白和换行 */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+
+    /* 最大高度，超出滚动 */
+    max-height: 300px;
+    overflow-y: auto;
+
+    /* 等宽字体 */
+    font-family: 'Consolas', monospace;
+    font-size: 14px;
+
+    /* 边框 */
+    border: 1px solid var(--result-border);
+}
+
+/* SRT预览区域（暗色主题） */
+.srt-preview {
+    background: var(--srt-bg);
+    color: var(--srt-text);
+    padding: 15px;
+    border-radius: 5px;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 15px 0;
+}
+
+/* 命令行日志区域（更暗） */
+.log-box {
+    background: var(--log-bg);
+    color: var(--log-text);
+    padding: 10px;
+    border-radius: 5px;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+/* 按钮组（水平排列） */
+.button-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* ==================== 高级设置面板 ==================== */
+.settings-panel {
+    /* 绝对定位，悬浮在页面右上角 */
+    position: absolute;
+    top: 80px;
+    right: 20px;
+
+    /* 宽度固定 */
+    width: 350px;
+
+    /* 背景和边框 */
+    background: var(--settings-panel-bg);
+    border: 1px solid var(--settings-panel-border);
+    border-radius: 8px;
+
+    /* 内边距 */
+    padding: 15px;
+
+    /* 阴影 */
+    box-shadow: 0 4px 12px var(--settings-panel-shadow);
+
+    /* 层级较高，覆盖其他元素 */
+    z-index: 100;
+
+    /* 过渡效果 */
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+/* 隐藏面板 */
+.settings-panel.hidden {
+    display: none;
+}
+
+/* 设置网格布局 */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+/* 每个设置项 */
+.setting-item {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 设置项标签 */
+.setting-item label {
+    font-weight: bold;
+    margin-bottom: 3px;
+    font-size: 0.9em;
+}
+
+/* ==================== 批量处理区域 ==================== */
+.batch-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+/* 已选文件列表容器 */
+.batch-file-list {
+    margin: 10px 0;
+    max-height: 100px;
+    overflow-y: auto;
+    background: var(--batch-file-list-bg);
+    padding: 5px;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+/* 文件数量显示 */
+.file-count {
+    margin-left: 10px;
+}
+
+/* ==================== 任务列表表格 ==================== */
+.task-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+/* 表头 */
+.task-table th {
+    background: var(--table-header-bg);
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--table-border);
+}
+
+/* 单元格 */
+.task-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--table-border);
+}
+
+/* ==================== 临时文件管理 ==================== */
+.temp-control {
+    background: var(--temp-control-bg);
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+}
+
+/* 控制按钮组 */
+.temp-controls {
+    margin-bottom: 15px;
+}
+
+/* 数字输入框 */
+.temp-control input[type=number] {
+    width: 80px;
+    padding: 5px;
+    margin-right: 10px;
+    border: 1px solid var(--temp-control-input-border);
+    background: var(--card-bg);
+    color: var(--text-color);
+}
+
+/* 文件列表容器 */
+#tempFilesInfo {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    margin-top: 10px;
+}
+
+/* 文件列表表格 */
+#tempFilesInfo table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* 表头固定 */
+#tempFilesInfo th {
+    position: sticky;
+    top: 0;
+    background: var(--table-header-bg);
+    z-index: 1;
+}
+
+/* ==================== 模态框 ==================== */
+.modal {
+    /* 默认隐藏 */
+    display: none;
+
+    /* 固定定位，覆盖整个视口 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* 半透明黑色背景 */
+    background: var(--modal-overlay);
+
+    /* 层级最高 */
+    z-index: 1000;
+
+    /* 弹性布局，居中内容 */
+    justify-content: center;
+    align-items: center;
+}
+
+/* 隐藏模态框（与 hidden 类结合） */
+.modal.hidden {
+    display: none;
+}
+
+/* 模态框内容 */
+.modal-content {
+    background: var(--modal-content-bg);
+    width: 80%;
+    max-width: 600px;
+    max-height: 80%;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* 内部使用弹性列布局 */
+    display: flex;
+    flex-direction: column;
+
+    /* 背景色过渡 */
+    transition: background-color 0.3s;
+}
+
+/* 模态框文本区域 */
+.modal-text {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--modal-text-bg);
+    padding: 10px;
+    border-radius: 5px;
+    font-family: 'Consolas', monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    transition: background-color 0.3s;
+}
+
+/* 模态框按钮组 */
+.modal-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+/* ==================== 页脚 ==================== */
+.footer {
+    margin-top: 30px;
+    font-size: 0.9em;
+    color: var(--footer-text);
+    text-align: center;
+    transition: color 0.3s;
+}
+
+.footer a {
+    color: var(--footer-link);
+    text-decoration: none;
+}

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<!-- ==================== 头部 ==================== -->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地音频转字幕 · 图形化工具</title>
+    <!-- 引入外部样式表 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<!-- ==================== 主体 ==================== -->
+
+<body>
+    <!-- 页面主标题，包含主题切换和设置图标 -->
+    <h1 style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    ">
+        🎤 本地音频转字幕 · 图形化工具
+        <!-- 右侧图标容器 -->
+        <div style="
+            display: flex;
+            gap: 10px;
+        ">
+            <!-- 主题切换按钮（日间/夜间） -->
+            <span id="themeToggle" style="
+                      cursor: pointer;
+                      font-size: 1.2rem;
+                  ">☀️</span>
+            <!-- 高级设置面板开关 -->
+            <span id="settingsToggle" style="
+                      cursor: pointer;
+                      font-size: 1.2rem;
+                  ">⚙️</span>
+        </div>
+    </h1>
+
+    <!-- ==================== 高级设置面板（初始隐藏） ==================== -->
+    <div id="settingsPanel" class="settings-panel hidden">
+        <h4 style="margin-top: 0;">高级设置</h4>
+
+        <!-- 模型配置分组 -->
+        <div class="settings-grid">
+            <!-- 精度选择 -->
+            <div class="setting-item">
+                <label>精度:</label>
+                <select id="precision">
+                    <option value="int4" selected>int4</option>
+                    <option value="int8">int8</option>
+                    <option value="fp16">fp16</option>
+                    <option value="fp32">fp32</option>
+                </select>
+            </div>
+            <!-- 时间戳引擎开关 -->
+            <div class="setting-item">
+                <label>时间戳引擎:</label>
+                <input type="checkbox" id="timestamp" checked>
+            </div>
+            <!-- DirectML 加速开关 -->
+            <div class="setting-item">
+                <label>DirectML加速:</label>
+                <input type="checkbox" id="use_dml" checked>
+            </div>
+            <!-- Vulkan 加速开关 -->
+            <div class="setting-item">
+                <label>Vulkan加速:</label>
+                <input type="checkbox" id="use_vulkan" checked>
+            </div>
+            <!-- 上下文窗口大小 -->
+            <div class="setting-item">
+                <label>上下文窗口:</label>
+                <input type="number" id="n_ctx" value="2048" min="512" step="128">
+            </div>
+        </div>
+
+        <!-- 转录设置分组 -->
+        <h4>转录设置</h4>
+        <div class="settings-grid">
+            <!-- 语言选择 -->
+            <div class="setting-item">
+                <label>语言 (留空自动):</label>
+                <input type="text" id="language" placeholder="例: Chinese, English">
+            </div>
+            <!-- 提示词输入 -->
+            <div class="setting-item">
+                <label>提示词:</label>
+                <input type="text" id="context" placeholder="上下文提示">
+            </div>
+            <!-- 温度参数 -->
+            <div class="setting-item">
+                <label>温度:</label>
+                <input type="number" id="temperature" value="0.4" step="0.1" min="0" max="2">
+            </div>
+        </div>
+
+        <!-- 音频切片分组 -->
+        <h4>音频切片</h4>
+        <div class="settings-grid">
+            <!-- 开始位置 -->
+            <div class="setting-item">
+                <label>开始位置 (秒):</label>
+                <input type="number" id="seek_start" value="0" step="0.1" min="0">
+            </div>
+            <!-- 处理时长 -->
+            <div class="setting-item">
+                <label>处理时长 (秒, 留空全部):</label>
+                <input type="number" id="duration" step="0.1" min="0">
+            </div>
+        </div>
+
+        <!-- 流式配置分组 -->
+        <h4>流式配置</h4>
+        <div class="settings-grid">
+            <!-- 分段识别时长 -->
+            <div class="setting-item">
+                <label>分段识别时长 (秒):</label>
+                <input type="number" id="chunk_size" value="40" step="1" min="1">
+            </div>
+            <!-- 记忆片段数量 -->
+            <div class="setting-item">
+                <label>记忆片段数量:</label>
+                <input type="number" id="memory_num" value="1" step="1" min="0">
+            </div>
+        </div>
+
+        <!-- 其他选项分组 -->
+        <h4>其他</h4>
+        <div class="settings-grid">
+            <!-- 详细日志开关 -->
+            <div class="setting-item">
+                <label>详细日志:</label>
+                <input type="checkbox" id="verbose" checked>
+            </div>
+            <!-- 覆盖已存在文件开关 -->
+            <div class="setting-item">
+                <label>覆盖已存在文件:</label>
+                <input type="checkbox" id="yes">
+            </div>
+        </div>
+
+        <!-- 面板关闭按钮 -->
+        <div style="
+            text-align: right;
+            margin-top: 10px;
+        ">
+            <button id="closeSettings" class="btn-secondary">关闭</button>
+        </div>
+    </div>
+
+    <!-- ==================== 卡片1：单个音频转写 ==================== -->
+    <div class="card">
+        <!-- 文件拖拽/点击上传区域 -->
+        <div class="upload-area" id="dropArea">
+            <input type="file" id="fileInput" accept="audio/*">
+            <p>📁 点击或拖拽音频文件到此处</p>
+            <p class="hint">支持常见格式 (wav, mp3, m4a, flac...)</p>
+        </div>
+
+        <!-- 显示已选择的文件信息 -->
+        <div class="file-info" id="fileInfo"></div>
+
+        <!-- 音频预览区域（初始隐藏） -->
+        <div id="audioPreview" style="
+                 display: none;
+                 margin: 15px 0;
+             ">
+            <!-- HTML5 音频播放器 -->
+            <audio id="audioPlayer" controls style="width: 100%;"></audio>
+            <!-- 波形图画布 -->
+            <canvas id="waveformCanvas" width="800" height="150" style="
+                        width: 100%;
+                        height: 150px;
+                        background: #f0f0f0;
+                        border-radius: 5px;
+                        margin-top: 10px;
+                    "></canvas>
+        </div>
+
+        <!-- 开始转写按钮（初始禁用） -->
+        <button id="uploadBtn" class="btn-primary" disabled>开始转写</button>
+
+        <!-- 转写进度提示（初始隐藏） -->
+        <div class="progress" id="progress">
+            ⏳ 正在处理，请稍候... (通常几秒钟)
+        </div>
+
+        <!-- 转写结果区域（初始隐藏） -->
+        <div id="resultSection" style="display: none;">
+            <h3>📝 识别文本</h3>
+            <div class="result-box" id="textResult"></div>
+
+            <h3>🎬 字幕预览 (SRT)</h3>
+            <div class="srt-preview" id="srtPreview"></div>
+
+            <!-- 命令行日志折叠面板 -->
+            <details>
+                <summary>🔍 详情 (命令行日志)</summary>
+                <div class="log-box" id="logDetails"></div>
+            </details>
+
+            <!-- 结果操作按钮组 -->
+            <div class="button-group">
+                <button id="downloadSrt" class="btn-primary">⬇️ 下载 SRT 字幕</button>
+                <button id="copyText" class="btn-primary">📋 复制文本</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 卡片2：批量处理任务队列 ==================== -->
+    <div class="card">
+        <h3>📦 批量处理任务队列</h3>
+
+        <!-- 批量文件选择控件 -->
+        <div class="batch-controls">
+            <input type="file" id="batchFileInput" multiple accept="audio/*" style="display: none;">
+            <button id="batchSelectBtn" class="btn-primary">选择音频文件</button>
+            <button id="batchUploadBtn" class="btn-primary">添加到队列</button>
+            <span id="batchFileCount" class="file-count"></span>
+        </div>
+
+        <!-- 已选文件列表容器 -->
+        <div id="batchFileList" class="batch-file-list"></div>
+
+        <!-- 任务列表 -->
+        <div id="taskList">
+            <h4>任务列表</h4>
+            <table class="task-table">
+                <thead>
+                    <tr>
+                        <th>文件名</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    <tr>
+                        <td colspan="3">暂无任务</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== 卡片3：临时文件管理 ==================== -->
+    <div class="card">
+        <div class="temp-control">
+            <h4>📂 临时文件管理</h4>
+            <!-- 当前文件数量限制显示 -->
+            <p>当前限制: <span id="maxUploadsSpan">12</span> 个文件</p>
+
+            <!-- 控制按钮组 -->
+            <div class="temp-controls">
+                <label>设置最大文件数(推荐为4的倍数): </label>
+                <input type="number" id="maxUploadsInput" min="1" value="12">
+                <button id="setLimitBtn" class="btn-primary">应用</button>
+                <button id="cleanBtn" class="btn-primary">清理超出文件</button>
+                <button id="refreshTempBtn" class="btn-primary">刷新列表</button>
+                <button id="organizeBtn" class="btn-primary">整理</button>
+            </div>
+
+            <!-- 临时文件列表表格 -->
+            <div id="tempFilesInfo">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>文件名</th>
+                            <th>大小</th>
+                            <th>修改时间</th>
+                            <th>类型</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tempFilesBody">
+                        <tr>
+                            <td colspan="4">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 页脚 ==================== -->
+    <div class="footer">
+        ⚡ 纯本地离线运行 · 音频文件不会上传到任何服务器<br>
+        基于 <a href="#" target="_blank">Qwen3-ASR-GGUF</a> 构建 · 前端界面独立开发
+    </div>
+
+    <!-- ==================== 文本查看模态框（初始隐藏） ==================== -->
+    <div id="textModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>识别文本</h3>
+            <!-- 文本内容显示区 -->
+            <div id="modalTextContent" class="modal-text"></div>
+            <!-- 模态框操作按钮 -->
+            <div class="modal-actions">
+                <button id="copyModalText" class="btn-primary">复制文本</button>
+                <button id="closeModal" class="btn-secondary">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入外部 JavaScript 文件 -->
+    <script src="script.js"></script>
+</body>
+
+</html>
